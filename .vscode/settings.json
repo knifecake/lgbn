@@ -1,9 +1,27 @@
 {
-    "editor.formatOnPaste": true,
-    "editor.formatOnSave": true,
+    "files.watcherExclude": {
+        ".venv": true,
+        "**/__pycache__": true,
+    },
+    "files.exclude": {
+        ".venv": true,
+        "**/__pycache__": true,
+    },
+    "search.exclude": {
+        ".venv": true,
+    },
+    "terminal.integrated.profiles.linux": {
+        "bash": {
+            "path": "bash",
+            "icon": "terminal-bash",
+        },
+    },
+    "terminal.integrated.defaultProfile.linux": "bash",
     "python.formatting.provider": "yapf",
+    "editor.formatOnSave": true,
     "python.linting.enabled": true,
     "python.linting.pylintPath": "pylint",
     "python.linting.pylintEnabled": true,
-    "python.defaultInterpreterPath": "./.venv/bin/python"
+    "python.defaultInterpreterPath": "./.venv/bin/python",
+    "editor.formatOnPaste": true
 }
