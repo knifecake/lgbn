@@ -1,0 +1,5 @@
+# Normal probability distribution
+scipy>=1.8
+
+# Graph algorithms
+networkx>=2.8
