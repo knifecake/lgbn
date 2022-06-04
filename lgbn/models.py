@@ -76,6 +76,48 @@ class LinearGaussianCPD(CPD):
         if self.var <= 0:
             raise ValueError('variance must be positive')
 
+    
+    def mle(self, data):
+        '''Find maximum likelihood estimate for `mean`, `variance` and `weights` given
+        the `data` and the dependencies on the `parents`. Estimate is returned as a new LinearGaussianCPD.
+
+        `data` must be a `pandas.DataFrame` with one row per observation and one column
+        per variable.
+        
+        See section 17.2.4 of Koller & Friedman.'''
+        M = len(data)
+        k = len(self.parents)
+        x_sum = data[self.node].sum()
+        u_sums = data[list(self.parents)].sum().to_numpy()
+        xu_sums = [(data[self.node] * data[p]).sum() for p in self.parents]
+        uu_sums = [[(data[ui] * data[uj]).sum() for uj in self.parents]
+                   for ui in self.parents]
+
+        # solve A*beta = b
+        A = np.block(
+            [[np.reshape([M], (1, 1)),
+              np.reshape(u_sums, (1, k))],
+             [np.reshape(u_sums, (k, 1)),
+              np.reshape(uu_sums, (k, k))]])
+        b = [x_sum] + xu_sums
+        beta = np.linalg.solve(A, b)
+
+        # extract parameters
+        mean, weights = beta[0], beta[1:]
+        x_var = data[self.node].var()
+        cov_d = data[list(self.parents)].cov()
+        var = x_var - sum([
+            sum([
+                weights[i] * weights[j] * cov_d[pi][pj]
+                for j, pj in enumerate(self.parents)
+            ]) for i, pi in enumerate(self.parents)
+        ])
+        return LinearGaussianCPD(node=self.node,
+                                 mean=mean,
+                                 var=var,
+                                 parents=self.parents,
+                                 weights=weights)
+
     def to_dict(self):
         data = super().to_dict()
         data.update({
@@ -215,4 +257,3 @@ class LinearGaussianBayesianNetwork(BayesianNetwork):
                     ])
 
         return multivariate_normal(mean=mean, cov=cov, allow_singular=True)
-

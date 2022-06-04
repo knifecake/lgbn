@@ -1,8 +1,8 @@
 import unittest
 
-import numpy as np
+from lgbn.models import (CPD, BayesianNetwork, LinearGaussianBayesianNetwork,
+                         LinearGaussianCPD)
 
-from lgbn.models import CPD, BayesianNetwork, LinearGaussianBayesianNetwork, LinearGaussianCPD
 
 class TestCPD(unittest.TestCase):
     def test_casts_parents_to_tuple(self):
@@ -43,6 +43,9 @@ class TestLinearGaussianCPD(unittest.TestCase):
         self.assertEqual(cpd.var, 2)
         self.assertEqual(cpd.parents, ('B', 'C'))
         self.assertEqual(cpd.weights, (1, 2))
+
+    def test_mle(self):
+        pass # TODO
 
 class TestBayesianNetwork(unittest.TestCase):
     def test_add_cpd(self):

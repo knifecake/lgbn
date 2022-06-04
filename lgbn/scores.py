@@ -1,6 +1,10 @@
 from functools import lru_cache
 
 import numpy as np
+import pandas as pd
+from scipy.stats import norm
+
+from lgbn.models import LinearGaussianCPD
 
 
 class BaseScore:
@@ -27,7 +31,7 @@ class BaseScore:
         network is the sum of the scores of each family (i.e. the set of a node
         and its parents).
         '''
-        return np.sum(self.score_fam(node, tuple(net.predecessors(node))) for node in net.nodes())
+        return sum(self.score_fam(node, tuple(net.predecessors(node))) for node in net.nodes())
 
 class LogLikScore(BaseScore):
     '''
@@ -39,7 +43,14 @@ class LogLikScore(BaseScore):
 
     @lru_cache(maxsize=1024)
     def score_fam(self, node, parents):
-        raise NotImplementedError
+        # estimate parameters by maximum likelihood
+        fam = LinearGaussianCPD(node, parents=parents).mle(self.data)
+        
+        # calculate likelihood
+        parent_data = self.data[list(fam.parents)]
+        weights = pd.Series(fam.weights, index=fam.parents, dtype=float)
+        mean = fam.mean + parent_data.mul(weights, axis='columns').sum(axis=1)
+        return norm.logpdf(self.data[node], loc=mean, scale=np.sqrt(fam.var)).sum()
 
 
 class BICScore(BaseScore):
@@ -58,22 +69,3 @@ class BICScore(BaseScore):
     def score_fam(self, node, parents: tuple):
         log_lik = self.loglik_score.score_fam(node, parents)
         return log_lik - .5 * np.log(len(self.data)) * (len(parents) + 2)
-
-    
-class AIC(BaseScore):
-    '''
-    The Akaike Information Criterio (AIC) score of a network is the LogLikScore
-    of that network minus a regularization constant proportional to the
-    complexity of the network.
-
-    This score is decomposable and thus takes advantage of caching.
-    '''
-
-    def __init__(self, data):
-        self.data = data
-        self.loglik_score = LogLikScore(data)
-
-    @lru_cache(maxsize=1024)
-    def score_fam(self, node, parents: tuple):
-        log_lik = self.loglik_score.score_fam(node, parents)
-        return log_lik - .5 * (len(parents) + 2)
