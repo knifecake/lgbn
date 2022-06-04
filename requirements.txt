@@ -4,4 +4,8 @@ scipy>=1.8
 # Graph algorithms
 networkx>=2.8
 
+# Data manipulation
 pandas>=1.4
+
+# Estimators
+sklearn >= 1.1

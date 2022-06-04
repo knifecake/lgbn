@@ -4,6 +4,7 @@ import numpy as np
 from scipy.stats import multivariate_normal
 
 
+
 class CPD:
     '''A conditional probability distribution for a node which also references
     the node's parents.'''
@@ -209,6 +210,7 @@ class LinearGaussianBayesianNetwork(BayesianNetwork):
     The joint distribution of these networks also a Gaussian distribution, the
     parameters of which can be obtained via the `to_joint_gaussian()` method.
     '''
+    cpd_class = LinearGaussianCPD
 
     def to_joint_gaussian(self):
         '''
@@ -257,3 +259,4 @@ class LinearGaussianBayesianNetwork(BayesianNetwork):
                     ])
 
         return multivariate_normal(mean=mean, cov=cov, allow_singular=True)
+
