@@ -26,6 +26,7 @@ class CPD:
         A conditional probability distribution for linear Gaussian Bayesian
         networks.
     '''
+
     node: Any
     parents: tuple[Any]
 
@@ -244,17 +245,18 @@ class BayesianNetwork(nx.DiGraph):
     variable with a distribution conditional on the parent nodes.
     '''
 
+    
+    cpds = Dict[Any, CPD]
     '''
     A dictionary mapping node identifiers to Conditional Probability
     Distributions.
     '''
-    cpds = Dict[Any, CPD]
 
+    cpd_class = CPD
     '''
     The class used to instantiated CPDs when loading from a dict via
     `.from_dict(data)`. 
     '''
-    cpd_class = CPD
 
     def __init__(self):
         self.cpds = {}

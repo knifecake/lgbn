@@ -1,10 +1,11 @@
 from functools import lru_cache
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-from lgbn.models import LinearGaussianCPD
+from lgbn.models import BayesianNetwork, LinearGaussianCPD
 
 
 class BaseScore:
@@ -19,13 +20,27 @@ class BaseScore:
     where the `.score(network)` function can be obtained by summing the
     `.score_fam(node, parent)` method over the nodes in a network.
     '''
-    def __init__(self, data) -> None:
+    
+    data: pd.DataFrame
+    '''
+    A Pandas DataFrame with one row per observation and one column per variable.
+    '''
+
+    def __init__(self, data: pd.DataFrame) -> None:
+        '''
+        Create a BaseScore
+        
+        Parameters
+        ----------
+        data : pandas.DataFrame
+            A Pandas DataFrame with one row per observation and one column per variable.
+        '''
         self.data = data
 
-    def score_fam(self, node, parents: tuple):
+    def score_fam(self, node: Any, parents: tuple[Any]):
         raise NotImplementedError
 
-    def score(self, net):
+    def score(self, net: BayesianNetwork):
         '''
         A default implementation for decomposable scores where the score of a
         network is the sum of the scores of each family (i.e. the set of a node
@@ -39,6 +54,9 @@ class LogLikScore(BaseScore):
     likelihood of the data given the network as estimated by net.mle().
 
     This score is decomposable and thus takes advantage of caching.
+
+    See section 18.3.1 of [1]_ for a more in-depth discussion of the log
+    likelihood score.
     '''
 
     @lru_cache(maxsize=1024)
@@ -60,6 +78,15 @@ class BICScore(BaseScore):
     data and the complexity of the network.
 
     This score is decomposable and thus takes advantage of caching.
+
+    For a complete description of the BIC score see [1]_ section 18.3.5.
+
+    References
+    ----------
+
+    .. [1] D. Koller and N. Friedman, Probabilistic graphical models: principles
+           and techniques. Cambridge, MA: MIT Press, 2009. 
+
     '''
     def __init__(self, data):
         self.data = data

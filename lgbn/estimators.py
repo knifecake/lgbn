@@ -13,13 +13,56 @@ from lgbn.scores import BaseScore, BICScore, LogLikScore
 
 
 class ScoreSearchEstimator(BaseEstimator):
+    '''
+    A structure estimator using score-based search.
+    
+    .. note:: This class is just a general interface, it cannot actually be used.
+    
+    See Also
+    --------
+    K2Search, GreedyHillClimbing, GreedyEquivalentSearch
+    '''
+
+
     model: BayesianNetwork = None
+    '''
+    The model resulting from the estimation.
+    '''
+
     eps: float = 1e-9
+    '''
+    Tolerance for equality testing of numeric values. Two values a and b are
+    equal if ``abs(a - b) < eps``.
+    '''
     
     _score: BaseScore
     _data: pd.DataFrame = None
 
     def __init__(self, score=None, eps=1e-9):
+        '''
+        Create a ScoreSearchEstimator
+        
+        Parameters
+        ----------
+        
+        score : str or BaseScore
+            An instance of a Score, i.e. an object implementing a score(network)
+            method.
+            
+            You can use `loglik` and `bic` as shortcuts for passing instances of
+            LogLikScore and BICScore, respectively.
+
+        eps : float
+
+            Tolerance for number equality, i.e. a and b are considered equal if
+            ``abs(a - b) < eps``. This is used to stop iteration in iterative
+            search algorithms.
+            
+        Notes
+        -----
+        Some estimators require decomposable scores, i.e. those which also
+        implement the score_fam method.
+        '''
         self._set_score(score)
 
         self.eps = eps
@@ -43,7 +86,9 @@ class ScoreSearchEstimator(BaseEstimator):
 
     @cached_property
     def score(self):
-        '''Returns the score to use to fit the data to the model.'''
+        '''
+        Score instance to use for scoring networks in the search procedure.
+        '''
         if hasattr(self, 'score_class'):
             # if self._data is None:
             #     raise UserWarning('accessing the score before calling .fit(data) will yield an unusable score with no data.')
@@ -53,6 +98,21 @@ class ScoreSearchEstimator(BaseEstimator):
 
 
     def fit(self, data):
+        '''
+        Fit the model to the given data.
+        
+        Parameters
+        ----------
+        data : pandas.DataFrame
+            A DataFrame with one row per observation and one column per
+            variable. Column names will be used for node identifiers in the
+            resulting model.
+        
+        Returns
+        -------
+        A fitted estimator (self).
+        
+        '''
         self._data = data
 
         # invalidate score cache
@@ -61,9 +121,13 @@ class ScoreSearchEstimator(BaseEstimator):
 
         self.model = self.search()
         self.model.update_cpds_from_structure()
-        return self
+        return self # must return an estimator  
 
     def search(self) -> BayesianNetwork:
+        '''
+        Search the space of posible models for the one that maximizes the score
+        of this estimator.
+        '''
         raise NotImplementedError
     
     def get_params(self, deep=True):
@@ -82,7 +146,54 @@ class ScoreSearchEstimator(BaseEstimator):
         return self # must return an estimator
 
 class K2Search(ScoreSearchEstimator):
+    '''
+    K2 structure learning algorithm.
+    
+    The K2 algorithm learns the structure of a Bayesian network that maximizes
+    the given score. The search procedure is guided by a given topological
+    ordering of the network. In that ordering, if node x comes before node y,
+    then node y can never be a parent of node x. This vastly reduces the search
+    space resulting in a significant speedup, even without using caching.
+
+    See [1]_ for a detailed description of the K2 algorithm.
+    
+    .. note::
+        This implementation requires a decomposable score, although
+        there exist other implementations that work with non-decomposable scores.
+
+    References
+    ----------
+
+    .. [1] G. F. Cooper and E. Herskovits, “A Bayesian method for the induction
+              of probabilistic networks from data,” Mach Learn, vol. 9, no. 4,
+              pp. 309–347, Oct. 1992, doi: 10.1007/BF00994110. 
+
+    '''
+
     def __init__(self, score=None, ordering=None, eps=1e-9):
+        '''
+        Create a K2Search estimator.
+        
+        Parameters
+        ----------
+        score : str or BaseScore
+            An instance of a Score, i.e. an object implementing a score(network)
+            method.
+            
+            You can use `loglik` and `bic` as shortcuts for passing instances of
+            LogLikScore and BICScore, respectively.
+        
+        ordering : Sequence[Any]
+            A list-like object of node identifiers to use as the topological
+            ordering.
+
+        eps : float
+
+            Tolerance for number equality, i.e. a and b are considered equal if
+            ``abs(a - b) < eps``. This is used to stop iteration in iterative
+            search algorithms.
+        
+        '''
         super().__init__(score=score, eps=eps)
 
         self.ordering = ordering
@@ -136,7 +247,59 @@ class K2Search(ScoreSearchEstimator):
     
 
 class GreedyHillClimbing(ScoreSearchEstimator):
+    '''
+    Greedy Hill Climbing structure search algorithm.
+
+    The Greedy Hill Climbing algorithm learns the structure of a Bayesian
+    network that maximizes the given score. The search procedure starts with an
+    initial network, which defaults to a fully disconnected network. Edges are
+    added, removed or have their direction reversed one at a time until no more
+    modifications increase the overall score of the network. This algorithm is
+    reasonably fast when used with a decomposable score which can be cached.
+
+    See p. 40 in [2]_ for a detailed description of the Greedy Hill Climbing
+    algorithm. The source refers to Greedy Hill Climbing as Max-Min Hill
+    Climbing.
+    
+    .. note::
+        This implementation requires a decomposable score, although
+        there exist other implementations that work with non-decomposable scores.
+
+    References
+    ----------
+
+    .. [2] I. Tsamardinos, L. E. Brown, and C. F. Aliferis, “The max-min
+           hill-climbing Bayesian network structure learning algorithm,” Mach
+           Learn, vol. 65, no. 1, pp. 31–78, Oct. 2006, doi:
+           10.1007/s10994-006-6889-7. 
+
+    '''
     def __init__(self, score=None, start_net=None, max_iter=1_000_000, eps=1e-9):
+        '''
+        Create a GreedyHillClimbing estimator.
+        
+        Parameters
+        ----------
+        score : str or BaseScore
+            An instance of a Score, i.e. an object implementing a score(network)
+            method.
+            
+            You can use `loglik` and `bic` as shortcuts for passing instances of
+            LogLikScore and BICScore, respectively.
+        
+        start_net : Optional[BayesianNetwork]
+            A starting Bayesian network, defaults to a fully disconnected network.
+
+        max_iter : int
+            Maximum number of iterations to perform, defaults to 1 million.
+
+        eps : float
+
+            Tolerance for number equality, i.e. a and b are considered equal if
+            ``abs(a - b) < eps``. This is used to stop iteration in iterative
+            search algorithms.
+        
+        '''
         super().__init__(score=score, eps=eps)
 
         self.start_net = start_net
@@ -250,7 +413,57 @@ class GreedyHillClimbing(ScoreSearchEstimator):
 
 
 class GreedyEquivalentSearch(ScoreSearchEstimator):
+    '''
+    Greedy Equivalent Search structure learning algorithm.
+
+    The Greedy Equivalent algorithm learns the structure of a Bayesian network
+    that maximizes the given score. The search procedure starts with an empty
+    graph. Edges are added until no more increase the score and then removed
+    until no further operation increases the score. Equality of operations and
+    thus networks is defined by equivalence classes. An equivalence class
+    contains all networks which have the same edges regardless of orientation.
+    This algorithm is reasonably fast when used with a decomposable score which
+    can be cached.
+
+    See [3]_ for a detailed description of the Greedy Equivalent Search
+    algorithm.
+    
+    .. note::
+        This implementation requires a decomposable score, although
+        there exist other implementations that work with non-decomposable scores.
+
+    References
+    ----------
+
+    .. [3] D. M. Chickering, “Optimal Structure Identiﬁcation With Greedy
+              Search,” Journal of Machine Learning Research, vol. 3, no. Nov
+              2002, p. 48, Nov. 2002. 
+
+    '''
+
     def __init__(self, score=None, max_iter=1_000_000, eps=1e-9):
+        '''
+        Create a GreedyEquivalentSearch estimator.
+        
+        Parameters
+        ----------
+        score : str or BaseScore
+            An instance of a Score, i.e. an object implementing a score(network)
+            method.
+            
+            You can use `loglik` and `bic` as shortcuts for passing instances of
+            LogLikScore and BICScore, respectively.
+        
+        max_iter : int
+            Maximum number of iterations to perform, defaults to 1 million.
+
+        eps : float
+
+            Tolerance for number equality, i.e. a and b are considered equal if
+            ``abs(a - b) < eps``. This is used to stop iteration in iterative
+            search algorithms.
+        
+        '''
         super().__init__(score=score, eps=eps)
         self.max_iter = max_iter
 
