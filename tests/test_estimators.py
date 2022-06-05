@@ -2,11 +2,14 @@ import os
 import unittest
 
 import pandas as pd
-from lgbn.estimators import GreedyEquivalentSearch, GreedyHillClimbing, K2Search, ScoreSearchEstimator
+from lgbn.estimators import (
+    GreedyEquivalentSearch, GreedyHillClimbing, K2Search, ScoreSearchEstimator
+)
 from lgbn.scores import BaseScore, BICScore, LogLikScore
 
 
 class TestSearchEstimator(unittest.TestCase):
+
     def test_estimator(self):
         score = BaseScore(None)
         with self.assertRaises(ValueError):
@@ -41,9 +44,10 @@ class TestSearchEstimator(unittest.TestCase):
         sse.set_params(score='loglik')
         self.assertEqual(sse.score_class, LogLikScore)
         self.assertIsInstance(sse.score, LogLikScore)
-        
+
 
 class TestK2Search(unittest.TestCase):
+
     def test_fit(self):
         data = pd.read_csv(os.path.join('tests', 'test_data', 'chain.csv'))
         estimator = K2Search(score='bic', ordering='ABC')
@@ -53,19 +57,20 @@ class TestK2Search(unittest.TestCase):
         self.assertListEqual(list(estimator.model.predecessors('B')), ['A'])
         self.assertListEqual(list(estimator.model.predecessors('C')), ['B'])
 
-    
     def test_params(self):
         estimator = K2Search(score='bic', ordering='BAC')
         params = estimator.get_params()
         params['ordering'] = 'ABC'
         estimator.set_params(**params)
         self.assertEqual(estimator.ordering, 'ABC')
-    
+
     def test_ordering_required(self):
         with self.assertRaises(ValueError):
             K2Search(score='bic')
 
+
 class TestGreedyHillClimbing(unittest.TestCase):
+
     def test_fit(self):
         data = pd.read_csv(os.path.join('tests', 'test_data', 'chain.csv'))
         estimator = GreedyHillClimbing(score='bic')
@@ -75,7 +80,6 @@ class TestGreedyHillClimbing(unittest.TestCase):
         # self.assertListEqual(list(estimator.model.predecessors('B')), [])
         # self.assertListEqual(list(estimator.model.predecessors('C')), ['B'])
 
-    
     def test_get_op_delta(self):
         # tests an edge case to ensure full coverage
         estimator = GreedyHillClimbing(score='bic')
@@ -91,6 +95,7 @@ class TestGreedyHillClimbing(unittest.TestCase):
 
 
 class TestGreedyEquivalentSearch(unittest.TestCase):
+
     def test_fit(self):
         data = pd.read_csv(os.path.join('tests', 'test_data', 'chain.csv'))
         estimator = GreedyEquivalentSearch(score='bic')
@@ -101,7 +106,9 @@ class TestGreedyEquivalentSearch(unittest.TestCase):
         # self.assertListEqual(list(estimator.model.predecessors('C')), ['B'])
 
     def test_fit_bnlearn(self):
-        data = pd.read_csv(os.path.join('tests', 'test_data', 'bnlearn-gaussian.csv'))
+        data = pd.read_csv(
+            os.path.join('tests', 'test_data', 'bnlearn-gaussian.csv')
+        )
         estimator = GreedyEquivalentSearch(score='bic')
         estimator.fit(data)
 
@@ -111,7 +118,6 @@ class TestGreedyEquivalentSearch(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             estimator._get_op_delta(('X', ('A', 'B')), None)
 
-    
     def test_params(self):
         estimator = GreedyEquivalentSearch(score='bic')
         params = estimator.get_params()

@@ -6,8 +6,9 @@ import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator
 
-from lgbn.models import (BayesianNetwork, LinearGaussianBayesianNetwork,
-                         LinearGaussianCPD)
+from lgbn.models import (
+    BayesianNetwork, LinearGaussianBayesianNetwork, LinearGaussianCPD
+)
 from lgbn.scores import BaseScore, BICScore, LogLikScore
 
 
@@ -22,7 +23,6 @@ class ScoreSearchEstimator(BaseEstimator):
     K2Search, GreedyHillClimbing, GreedyEquivalentSearch
     '''
 
-
     model: BayesianNetwork = None
     '''
     The model resulting from the estimation.
@@ -33,7 +33,7 @@ class ScoreSearchEstimator(BaseEstimator):
     Tolerance for equality testing of numeric values. Two values a and b are
     equal if ``abs(a - b) < eps``.
     '''
-    
+
     _score: BaseScore
     _data: pd.DataFrame = None
 
@@ -95,7 +95,6 @@ class ScoreSearchEstimator(BaseEstimator):
 
         return self._score
 
-
     def fit(self, data):
         '''
         Fit the model to the given data.
@@ -120,7 +119,7 @@ class ScoreSearchEstimator(BaseEstimator):
 
         self.model = self.search()
         self.model.update_cpds_from_structure()
-        return self # must return an estimator  
+        return self  # must return an estimator
 
     def search(self) -> BayesianNetwork:
         '''
@@ -128,21 +127,22 @@ class ScoreSearchEstimator(BaseEstimator):
         of this estimator.
         '''
         raise NotImplementedError
-    
+
     def get_params(self, deep=True):
         return {'score': self.score, 'eps': self.eps}
 
     def set_params(self, **kwargs):
         if 'score' in kwargs:
             self._set_score(kwargs['score'])
-        
+
         if 'eps' in kwargs:
             self.eps = kwargs['eps']
 
             if self.eps <= 0:
                 raise ValueError('epsilon must be positive')
 
-        return self # must return an estimator
+        return self  # must return an estimator
+
 
 class K2Search(ScoreSearchEstimator):
     '''
@@ -197,7 +197,9 @@ class K2Search(ScoreSearchEstimator):
 
         self.ordering = ordering
         if self.ordering is None:
-            raise ValueError('Ordering must be defined for the K2Search estimator')
+            raise ValueError(
+                'Ordering must be defined for the K2Search estimator'
+            )
 
     def search(self):
         # initialize disconnected DAG
@@ -222,15 +224,14 @@ class K2Search(ScoreSearchEstimator):
         possible_parents = self.ordering[:idx]
         current_parents = list(dag.predecessors(node))
         possible_parents = list(
-            filter(lambda n: n not in current_parents, possible_parents))
+            filter(lambda n: n not in current_parents, possible_parents)
+        )
         parent_score_pairs = [
             (p, self.score.score_fam(node, tuple(current_parents + [p])))
             for p in possible_parents
         ]
 
-        return max(parent_score_pairs,
-                   key=lambda t: t[1],
-                   default=(None, None))
+        return max(parent_score_pairs, key=lambda t: t[1], default=(None, None))
 
     def get_params(self, deep=True):
         params = super().get_params(deep)
@@ -240,10 +241,9 @@ class K2Search(ScoreSearchEstimator):
     def set_params(self, **kwargs):
         if 'ordering' in kwargs:
             self.ordering = kwargs['ordering']
-        
+
         return super().set_params(**kwargs)
 
-    
 
 class GreedyHillClimbing(ScoreSearchEstimator):
     '''
@@ -273,7 +273,15 @@ class GreedyHillClimbing(ScoreSearchEstimator):
            10.1007/s10994-006-6889-7. 
 
     '''
-    def __init__(self, score=None, start_net=None, max_iter=1_000_000, eps=1e-9, random_state=None):
+
+    def __init__(
+        self,
+        score=None,
+        start_net=None,
+        max_iter=1_000_000,
+        eps=1e-9,
+        random_state=None
+    ):
         '''
         Create a GreedyHillClimbing estimator.
         
@@ -309,7 +317,6 @@ class GreedyHillClimbing(ScoreSearchEstimator):
         self.start_net = start_net
         self.max_iter = max_iter
         self._set_random_state(random_state)
-        
 
     def _set_random_state(self, random_state):
         if isinstance(random_state, np.random.Generator):
@@ -371,8 +378,10 @@ class GreedyHillClimbing(ScoreSearchEstimator):
 
         # filter out edges that would introduce a cycle
         new_edges = list(
-            filter(lambda e: not nx.has_path(dag, e[1], e[0]),
-                   potential_new_edges))
+            filter(
+                lambda e: not nx.has_path(dag, e[1], e[0]), potential_new_edges
+            )
+        )
 
         ops = [('+', edge) for edge in new_edges]
 
@@ -384,9 +393,14 @@ class GreedyHillClimbing(ScoreSearchEstimator):
         edges_to_flip = list(
             filter(
                 lambda e: not any(
-                    map(lambda p: len(p) > 2,
-                        nx.all_simple_paths(dag, e[0], e[1]))),
-                possible_edges))
+                    map(
+                        lambda p: len(p) > 2,
+                        nx.all_simple_paths(dag, e[0], e[1])
+                    )
+                ),
+                possible_edges
+            )
+        )
         ops += [('F', edge) for edge in edges_to_flip]
 
         return ops
@@ -398,15 +412,19 @@ class GreedyHillClimbing(ScoreSearchEstimator):
         if code == '+':
             old_parents = list(net.predecessors(Y))
             new_parents = old_parents + [X]
-            score_delta = (self.score.score_fam(Y, tuple(new_parents)) -
-                           self.score.score_fam(Y, tuple(old_parents)))
+            score_delta = (
+                self.score.score_fam(Y, tuple(new_parents)) -
+                self.score.score_fam(Y, tuple(old_parents))
+            )
 
         elif code == '-':
             old_parents = list(net.predecessors(Y))
             new_parents = old_parents.copy()
             new_parents.remove(X)
-            score_delta = (self.score.score_fam(Y, tuple(new_parents)) -
-                           self.score.score_fam(Y, tuple(old_parents)))
+            score_delta = (
+                self.score.score_fam(Y, tuple(new_parents)) -
+                self.score.score_fam(Y, tuple(old_parents))
+            )
 
         elif code == 'F':
             old_X_parents = list(net.predecessors(X))
@@ -414,10 +432,12 @@ class GreedyHillClimbing(ScoreSearchEstimator):
             new_X_parents = old_X_parents + [Y]
             new_Y_parents = old_Y_parents.copy()
             new_Y_parents.remove(X)
-            score_delta = (self.score.score_fam(X, tuple(new_X_parents)) +
-                           self.score.score_fam(Y, tuple(new_Y_parents)) -
-                           self.score.score_fam(X, tuple(old_X_parents)) -
-                           self.score.score_fam(Y, tuple(old_Y_parents)))
+            score_delta = (
+                self.score.score_fam(X, tuple(new_X_parents)) +
+                self.score.score_fam(Y, tuple(new_Y_parents)) -
+                self.score.score_fam(X, tuple(old_X_parents)) -
+                self.score.score_fam(Y, tuple(old_Y_parents))
+            )
         else:
             raise NotImplementedError
 
@@ -477,7 +497,7 @@ class GreedyEquivalentSearch(ScoreSearchEstimator):
         '''
         super().__init__(score=score, eps=eps)
         self.max_iter = max_iter
-        
+
     def search(self):
         # create an empty dag
         dag = LinearGaussianBayesianNetwork()
@@ -499,7 +519,7 @@ class GreedyEquivalentSearch(ScoreSearchEstimator):
                 current_score += best_delta
                 dag.apply_op(best_op)
             else:
-                break # pragma: no cover
+                break  # pragma: no cover
 
         while True:
             legal_ops = self._get_legal_remove_operations(dag)
@@ -514,7 +534,7 @@ class GreedyEquivalentSearch(ScoreSearchEstimator):
                 current_score += best_delta
                 dag.apply_op(best_op)
             else:
-                break # pragma: no cover
+                break  # pragma: no cover
 
         return dag
 
@@ -527,8 +547,10 @@ class GreedyEquivalentSearch(ScoreSearchEstimator):
 
         # filter out edges that would introduce a cycle
         new_edges = list(
-            filter(lambda e: not nx.has_path(dag, e[1], e[0]),
-                   potential_new_edges))
+            filter(
+                lambda e: not nx.has_path(dag, e[1], e[0]), potential_new_edges
+            )
+        )
 
         return [('+', edge) for edge in new_edges]
 
@@ -543,15 +565,19 @@ class GreedyEquivalentSearch(ScoreSearchEstimator):
         if code == '+':
             old_parents = list(net.predecessors(Y))
             new_parents = old_parents + [X]
-            score_delta = (self.score.score_fam(Y, tuple(new_parents)) -
-                           self.score.score_fam(Y, tuple(old_parents)))
+            score_delta = (
+                self.score.score_fam(Y, tuple(new_parents)) -
+                self.score.score_fam(Y, tuple(old_parents))
+            )
 
         elif code == '-':
             old_parents = list(net.predecessors(Y))
             new_parents = old_parents.copy()
             new_parents.remove(X)
-            score_delta = (self.score.score_fam(Y, tuple(new_parents)) -
-                           self.score.score_fam(Y, tuple(old_parents)))
+            score_delta = (
+                self.score.score_fam(Y, tuple(new_parents)) -
+                self.score.score_fam(Y, tuple(old_parents))
+            )
 
         else:
             raise NotImplementedError

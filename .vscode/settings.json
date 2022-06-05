@@ -24,5 +24,6 @@
     "python.linting.pylintEnabled": true,
     "python.defaultInterpreterPath": "./.venv/bin/python",
     "editor.formatOnPaste": true,
-    "esbonio.sphinx.confDir": ""
+    "esbonio.sphinx.confDir": "",
+    "python.formatting.yapfPath": "/home/elias/.pyenv/shims/yapf"
 }

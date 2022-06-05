@@ -20,7 +20,7 @@ class BaseScore:
     where the `.score(network)` function can be obtained by summing the
     `.score_fam(node, parent)` method over the nodes in a network.
     '''
-    
+
     data: pd.DataFrame
     '''
     A Pandas DataFrame with one row per observation and one column per variable.
@@ -46,7 +46,11 @@ class BaseScore:
         network is the sum of the scores of each family (i.e. the set of a node
         and its parents).
         '''
-        return sum(self.score_fam(node, tuple(net.predecessors(node))) for node in net.nodes())
+        return sum(
+            self.score_fam(node, tuple(net.predecessors(node)))
+            for node in net.nodes()
+        )
+
 
 class LogLikScore(BaseScore):
     '''
@@ -63,12 +67,13 @@ class LogLikScore(BaseScore):
     def score_fam(self, node, parents):
         # estimate parameters by maximum likelihood
         fam = LinearGaussianCPD(node, parents=parents).mle(self.data)
-        
+
         # calculate likelihood
         parent_data = self.data[list(fam.parents)]
         weights = pd.Series(fam.weights, index=fam.parents, dtype=float)
         mean = fam.mean + parent_data.mul(weights, axis='columns').sum(axis=1)
-        return norm.logpdf(self.data[node], loc=mean, scale=np.sqrt(fam.var)).sum()
+        return norm.logpdf(self.data[node], loc=mean,
+                           scale=np.sqrt(fam.var)).sum()
 
 
 class BICScore(BaseScore):
@@ -88,6 +93,7 @@ class BICScore(BaseScore):
            and techniques. Cambridge, MA: MIT Press, 2009. 
 
     '''
+
     def __init__(self, data):
         self.data = data
         self.loglik_score = LogLikScore(data)

@@ -1,5 +1,7 @@
 # lgbn
 
+[![Python package](https://github.com/knifecake/lgbn/actions/workflows/python-package.yml/badge.svg)](https://github.com/knifecake/lgbn/actions/workflows/python-package.yml)
+
 [![Documentation Status](https://readthedocs.org/projects/lgbn/badge/?version=latest)](https://lgbn.readthedocs.io/en/latest/?badge=latest)
 
 Structure and parameter learning for linear Gaussian Bayesian networks.

@@ -1,3 +1,10 @@
+#### In development
+
+- Publish usage guide
+- Publish design guide
+- Add CI badge to README
+- Reformatted code with yapf
+
 # v0
 
 ## v0.1

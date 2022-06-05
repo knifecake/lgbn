@@ -1,8 +1,9 @@
-from typing import Any, Optional, Dict
+from typing import Any, Dict, Optional
+
 import networkx as nx
 import numpy as np
-from scipy.stats import multivariate_normal
 import pandas as pd
+from scipy.stats import multivariate_normal
 
 
 class CPD:
@@ -30,7 +31,7 @@ class CPD:
     node: Any
     parents: tuple[Any]
 
-    def __init__(self, node: Any, parents: Optional[tuple[Any]]=None) -> None:
+    def __init__(self, node: Any, parents: Optional[tuple[Any]] = None) -> None:
         '''
         Create a conditional probability distribution
         
@@ -52,15 +53,13 @@ class CPD:
 
     def to_dict(self) -> Dict[str, Any]:
         '''Serializes this conditional probability distribution into a dict.'''
-        return {
-            'node': self.node,
-            'parents': self.parents
-        }
+        return {'node': self.node, 'parents': self.parents}
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]):
         '''Loads this conditional probability distribution from a dict.'''
         return cls(**data)
+
 
 class LinearGaussianCPD(CPD):
     '''
@@ -88,7 +87,14 @@ class LinearGaussianCPD(CPD):
     var: float
     weights: tuple[float]
 
-    def __init__(self, node: Any, mean: Optional[float]=0, var: Optional[float]=1, parents:Optional[tuple[Any]]=None, weights: Optional[tuple[float]]=None):
+    def __init__(
+        self,
+        node: Any,
+        mean: Optional[float] = 0,
+        var: Optional[float] = 1,
+        parents: Optional[tuple[Any]] = None,
+        weights: Optional[tuple[float]] = None
+    ):
         '''
         Create a linear Gaussian conditional probability distribution.
         
@@ -151,12 +157,13 @@ class LinearGaussianCPD(CPD):
         else:
             self.weights = tuple(self.weights)
             if len(self.parents) != len(self.weights):
-                raise ValueError('parents and weights must have the same length')
+                raise ValueError(
+                    'parents and weights must have the same length'
+                )
 
         if self.var <= 0:
             raise ValueError('variance must be positive')
 
-    
     def mle(self, data: pd.DataFrame):
         '''
         Find maximum likelihood estimate for `mean`, `variance` and `weights`
@@ -196,11 +203,9 @@ class LinearGaussianCPD(CPD):
                    for ui in self.parents]
 
         # solve A*beta = b
-        A = np.block(
-            [[np.reshape([M], (1, 1)),
-              np.reshape(u_sums, (1, k))],
-             [np.reshape(u_sums, (k, 1)),
-              np.reshape(uu_sums, (k, k))]])
+        A = np.block([[np.reshape([M], (1, 1)), np.reshape(u_sums, (1, k))],
+                      [np.reshape(u_sums, (k, 1)), np.reshape(uu_sums,
+                                                              (k, k))]])
         b = [x_sum] + xu_sums
         beta = np.linalg.solve(A, b)
 
@@ -210,32 +215,35 @@ class LinearGaussianCPD(CPD):
         cov_d = data[list(self.parents)].cov()
         var = x_var - sum([
             sum([
-                weights[i] * weights[j] * cov_d[pi][pj]
-                for j, pj in enumerate(self.parents)
-            ]) for i, pi in enumerate(self.parents)
+                weights[i] * weights[j] * cov_d[pi][pj] for j,
+                pj in enumerate(self.parents)
+            ]) for i,
+            pi in enumerate(self.parents)
         ])
-        return LinearGaussianCPD(node=self.node,
-                                 mean=mean,
-                                 var=var,
-                                 parents=self.parents,
-                                 weights=weights)
+        return LinearGaussianCPD(
+            node=self.node,
+            mean=mean,
+            var=var,
+            parents=self.parents,
+            weights=weights
+        )
 
     def to_dict(self):
         data = super().to_dict()
         data.update({
-            'mean': self.mean,
-            'var': self.var,
-            'weights': self.weights
+            'mean': self.mean, 'var': self.var, 'weights': self.weights
         })
         return data
 
     def __str__(self):
-        cond = ' + '.join(
-            [f'{w:.3f}*{p}' for w, p in zip(self.weights, self.parents)])
+        cond = ' + '.join([
+            f'{w:.3f}*{p}' for w, p in zip(self.weights, self.parents)
+        ])
         return f'{self.node} ~ N({self.mean:.3f} + {cond}, {self.var:.3f})'
 
     def __repr__(self) -> str:
         return f'<LinearGaussianCPD: {str(self)}>'
+
 
 class BayesianNetwork(nx.DiGraph):
     '''
@@ -245,7 +253,6 @@ class BayesianNetwork(nx.DiGraph):
     variable with a distribution conditional on the parent nodes.
     '''
 
-    
     cpds = Dict[Any, CPD]
     '''
     A dictionary mapping node identifiers to Conditional Probability
@@ -315,7 +322,9 @@ class BayesianNetwork(nx.DiGraph):
             self.remove_edge(*edge)
             self.add_edge(*reversed(edge))
         else:
-            raise NotImplementedError(f'Operation type {action} is not implemented')
+            raise NotImplementedError(
+                f'Operation type {action} is not implemented'
+            )
 
     def update_cpds_from_structure(self) -> None:
         '''
@@ -418,14 +427,14 @@ class LinearGaussianBayesianNetwork(BayesianNetwork):
             # mean[variables.index(p)] is guaranteed to exists bc we
             # are iterating with the topological sort
             mean[i] = cpd.mean + sum([
-                w * mean[variables.index(p)]
-                for w, p in zip(cpd.weights, cpd.parents)
+                w * mean[variables.index(p)] for w,
+                p in zip(cpd.weights, cpd.parents)
             ])
 
             # first step in calculating the cov matrix (KF 7.2, example 7.3)
             cov[i][i] = cpd.var + sum([
-                w * w * cov[variables.index(p)][variables.index(p)]
-                for w, p in zip(cpd.weights, cpd.parents)
+                w * w * cov[variables.index(p)][variables.index(p)] for w,
+                p in zip(cpd.weights, cpd.parents)
             ])
 
         # second step to calculate the covariance matrix (KF 7.2, example 7.3)
@@ -438,9 +447,8 @@ class LinearGaussianBayesianNetwork(BayesianNetwork):
                 else:
                     cpd = self.cpds[xj]
                     cov[i][j] = sum([
-                        w * cov[i][variables.index(p)]
-                        for w, p in zip(cpd.weights, cpd.parents)
+                        w * cov[i][variables.index(p)] for w,
+                        p in zip(cpd.weights, cpd.parents)
                     ])
 
         return multivariate_normal(mean=mean, cov=cov, allow_singular=True)
-

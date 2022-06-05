@@ -4,16 +4,20 @@ import unittest
 import numpy as np
 import pandas as pd
 from lgbn.models import LinearGaussianBayesianNetwork, LinearGaussianCPD
-from lgbn.scores import BICScore, BaseScore, LogLikScore
+from lgbn.scores import BaseScore, BICScore, LogLikScore
 from scipy.stats import norm
 
+
 class TestBaseScore(unittest.TestCase):
+
     def test_score_fam_not_implemented(self):
         with self.assertRaises(NotImplementedError):
             score = BaseScore(None)
             score.score_fam('A', ('B', 'C'))
 
+
 class TestLogLikScore(unittest.TestCase):
+
     def test_score_bnlearn(self):
         # bnlearn model string "[A][B][E][G][C|A:B][D|B][F|A:D:E:G]"
         net = LinearGaussianBayesianNetwork()
@@ -27,21 +31,25 @@ class TestLogLikScore(unittest.TestCase):
 
         [net.add_cpd(x) for x in (A, B, C, D, E, F, G)]
         data = pd.read_csv(
-            os.path.join('tests', 'test_data', 'bnlearn-gaussian.csv'))
+            os.path.join('tests', 'test_data', 'bnlearn-gaussian.csv')
+        )
         score = LogLikScore(data)
         sc = score.score(net)
         BNLEARN_REFERENCE_VALUE = -53131.917260
-        self.assertAlmostEqual(sc,
-                               BNLEARN_REFERENCE_VALUE,
-                               delta=abs(1e-6 * BNLEARN_REFERENCE_VALUE))
-
+        self.assertAlmostEqual(
+            sc,
+            BNLEARN_REFERENCE_VALUE,
+            delta=abs(1e-6 * BNLEARN_REFERENCE_VALUE)
+        )
 
 
 class TestBICScore(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.chain_data = pd.read_csv(
-            os.path.join('tests', 'test_data', 'chain.csv'))
+            os.path.join('tests', 'test_data', 'chain.csv')
+        )
 
     def test_score_single_node(self):
         G = LinearGaussianBayesianNetwork()
@@ -62,9 +70,11 @@ class TestBICScore(unittest.TestCase):
 
         # assert they agree within 1 part per million
         MATLAB_REFERENCE_VALUE = -3.163210236416053e+04
-        self.assertAlmostEqual(sc,
-                               MATLAB_REFERENCE_VALUE,
-                               delta=abs(1e-6 * MATLAB_REFERENCE_VALUE))
+        self.assertAlmostEqual(
+            sc,
+            MATLAB_REFERENCE_VALUE,
+            delta=abs(1e-6 * MATLAB_REFERENCE_VALUE)
+        )
 
     def test_score_chain_vs_matlab(self):
         G = LinearGaussianBayesianNetwork()
@@ -76,9 +86,11 @@ class TestBICScore(unittest.TestCase):
         sc = score.score(G)
 
         MATLAB_REFERENCE_VALUE = -9.296057540613585e+04
-        self.assertAlmostEqual(sc,
-                               MATLAB_REFERENCE_VALUE,
-                               delta=abs(1e-6 * MATLAB_REFERENCE_VALUE))
+        self.assertAlmostEqual(
+            sc,
+            MATLAB_REFERENCE_VALUE,
+            delta=abs(1e-6 * MATLAB_REFERENCE_VALUE)
+        )
 
     def test_score_bnlearn(self):
         net = LinearGaussianBayesianNetwork()
@@ -89,20 +101,23 @@ class TestBICScore(unittest.TestCase):
         G = LinearGaussianCPD('G')
         C = LinearGaussianCPD('C', parents=('A', 'B'), weights=(1, 1))
         D = LinearGaussianCPD('D', parents=('B', ), weights=(1, ))
-        F = LinearGaussianCPD('F',
-                              parents=('A', 'D', 'E', 'G'),
-                              weights=(1, 1, 1, 1))
+        F = LinearGaussianCPD(
+            'F', parents=('A', 'D', 'E', 'G'), weights=(1, 1, 1, 1)
+        )
 
         [net.add_cpd(x) for x in (A, B, C, D, E, F, G)]
 
         data = pd.read_csv(
-            os.path.join('tests', 'test_data', 'bnlearn-gaussian.csv'))
+            os.path.join('tests', 'test_data', 'bnlearn-gaussian.csv')
+        )
         score = BICScore(data)
         sc = score.score(net)
         BNLEARN_REFERENCE_VALUE = -53221.35
-        self.assertAlmostEqual(sc,
-                               BNLEARN_REFERENCE_VALUE,
-                               delta=abs(1e-6 * BNLEARN_REFERENCE_VALUE))
+        self.assertAlmostEqual(
+            sc,
+            BNLEARN_REFERENCE_VALUE,
+            delta=abs(1e-6 * BNLEARN_REFERENCE_VALUE)
+        )
 
     def _expected_single_node(self, data):
         # estimate parameters

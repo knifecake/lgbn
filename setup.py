@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="lgbn",
-    version="0.1.2",
+    version="0.1.3",
     author="Elias Hernandis",
     author_email="elias@hernandis.me",
     description="Structure and parameter learning for linear Gaussian Bayesian networks.",
