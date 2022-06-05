@@ -2,16 +2,45 @@ from typing import Any, Optional, Dict
 import networkx as nx
 import numpy as np
 from scipy.stats import multivariate_normal
-
+import pandas as pd
 
 
 class CPD:
-    '''A conditional probability distribution for a node which also references
-    the node's parents.'''
+    '''
+    A conditional probability distribution for a node.which also references the
+    node's parents.s
+
+    In a `BayesianNetwork` the probability distributions of the nodes are
+    specified via CPDs or Conditional Probability distributions. These classes
+    represent the probability distributions of the random variables in the nodes
+    of a Bayesian network, which in general are conditioned on the parent nodes.
+
+    .. note::
+
+        This is a base class which cannot actually be used.
+
+    See Also
+    --------
+
+    LinearGaussianCPD
+        A conditional probability distribution for linear Gaussian Bayesian
+        networks.
+    '''
     node: Any
     parents: tuple[Any]
 
-    def __init__(self, node: Any, parents: Optional[tuple[Any]]=None):
+    def __init__(self, node: Any, parents: Optional[tuple[Any]]=None) -> None:
+        '''
+        Create a conditional probability distribution
+        
+        Parameters
+        ----------
+        node : Any
+            The identifier of the node which has this CPD.
+        parents : tuple[Any]
+            The identifiers of the parent nodes upon which this distribution
+            depends.
+        '''
         self.node = node
         self.parents = parents
 
@@ -20,7 +49,7 @@ class CPD:
         else:
             self.parents = tuple(self.parents)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         '''Serializes this conditional probability distribution into a dict.'''
         return {
             'node': self.node,
@@ -28,15 +57,19 @@ class CPD:
         }
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data: Dict[str, Any]):
         '''Loads this conditional probability distribution from a dict.'''
         return cls(**data)
 
 class LinearGaussianCPD(CPD):
     '''
-    A linear Gaussian conditional probability distribution where the mean is a
-    linear combination of the means of the parent nodes plus a bias term, i.e.
-    if this node (X) has `parents` :math:`U_1, \ldots, U_k` then
+    A linear Gaussian conditional probability distribution.
+
+
+    A linear Gaussian conditional probability distribution is normal
+    distribution where the mean is a linear combination of the means of the
+    parent nodes plus a bias term, i.e. if this node (X) has `parents`
+    :math:`U_1, \ldots, U_k` then
     
     .. math::
 
@@ -55,6 +88,51 @@ class LinearGaussianCPD(CPD):
     weights: tuple[float]
 
     def __init__(self, node: Any, mean: Optional[float]=0, var: Optional[float]=1, parents:Optional[tuple[Any]]=None, weights: Optional[tuple[float]]=None):
+        '''
+        Create a linear Gaussian conditional probability distribution.
+        
+        Parameters
+        ----------
+        node : Any
+            The identifier of the node which has this CPD.
+        mean : float
+            The constant term or bias term in the mean of this distribution.
+            Defaults to 0.
+        var : float
+            The variance of this distribution (must be strictly positive).
+            Defaults to 1.
+        parents : tuple[Any]
+            The identifiers of the parent nodes upon which this distribution
+            depends.
+        weights : tuple[float]
+            The weights of the dependencies of this distribution to the values
+            taken by the parent nodes. Defaults to a tuple of 1s and of the same
+            length as parents.
+
+        Raises
+        ------
+        ValueError
+            If the variance `var` is not positive or the `weights` and `parents`
+            don't have the same length.
+
+        Examples
+        --------
+        >>> LinearGaussianCPD('A', mean=0, var=1)
+        <LinearGaussianCPD: A ~ N(0.000 + , 1.000)>
+
+        Mean and variance default to 0 and 1 respectively:
+
+        >>> LinearGaussianCPD('A', parents=('B', 'C'), weights=(1, 1))
+        <LinearGaussianCPD: A ~ N(0.000 + 1.000*B + 1.000*C, 1.000)>
+
+        Parents can be any iterable and weights default to a vector of 1s the
+        same length as parents, so the following example is equivalent to the
+        previous one:
+
+        >>> LinearGaussianCPD('A', parents='BC')
+        <LinearGaussianCPD: A ~ N(0.000 + 1.000*B + 1.000*C, 1.000)>
+    
+    '''
         self.node = node
         self.mean = mean
         self.var = var
@@ -78,14 +156,36 @@ class LinearGaussianCPD(CPD):
             raise ValueError('variance must be positive')
 
     
-    def mle(self, data):
-        '''Find maximum likelihood estimate for `mean`, `variance` and `weights` given
-        the `data` and the dependencies on the `parents`. Estimate is returned as a new LinearGaussianCPD.
+    def mle(self, data: pd.DataFrame):
+        '''
+        Find maximum likelihood estimate for `mean`, `variance` and `weights`
+        given the `data` and the dependencies on the `parents`.
 
-        `data` must be a `pandas.DataFrame` with one row per observation and one column
-        per variable.
+
+        Parameters
+        ----------
+        data : pandas.DataFrame
+               A DataFrame with one row per observation and one column per
+               variable.
         
-        See section 17.2.4 of Koller & Friedman.'''
+        Returns
+        -------
+        LinearGaussianCPD
+            A new conditional probability distribution where the parameters are
+            set to the ML estimates.
+
+        Notes
+        -----
+        Maximum likelihood estimation of parameters is computed using the
+        *sufficient statistics*  approach described in section 17.2.4 of [1]_.
+        
+        References
+        ----------
+
+        .. [1] D. Koller and N. Friedman, Probabilistic graphical models:
+               principles and techniques. Cambridge, MA: MIT Press, 2009.
+
+        '''
         M = len(data)
         k = len(self.parents)
         x_sum = data[self.node].sum()
@@ -133,21 +233,49 @@ class LinearGaussianCPD(CPD):
             [f'{w:.3f}*{p}' for w, p in zip(self.weights, self.parents)])
         return f'{self.node} ~ N({self.mean:.3f} + {cond}, {self.var:.3f})'
 
+    def __repr__(self) -> str:
+        return f'<LinearGaussianCPD: {str(self)}>'
+
 class BayesianNetwork(nx.DiGraph):
     '''
     A Bayesian Network.
+
+    A Bayesian network is a directed acyclic graph where each node is a random
+    variable with a distribution conditional on the parent nodes.
     '''
 
+    '''
+    A dictionary mapping node identifiers to Conditional Probability
+    Distributions.
+    '''
     cpds = Dict[Any, CPD]
+
+    '''
+    The class used to instantiated CPDs when loading from a dict via
+    `.from_dict(data)`. 
+    '''
     cpd_class = CPD
 
     def __init__(self):
         self.cpds = {}
         super().__init__()
 
-    def add_cpd(self, cpd: CPD):
-        '''Add a conditional probability distribution to the network. Also adds
-        the node and edges to the underlying DiGraph.'''
+    def add_cpd(self, cpd: CPD) -> None:
+        '''
+        Add a conditional probability distribution to the network.
+        
+        .. note:: 
+            Also adds the node and edges to the underlying `networkx.DiGraph`. If
+            there already is a conditional probability distribution it is replaced
+            and new edges are added, but previous edges not present in the new
+            distribution will not be removed.
+
+        Parameters
+        ----------
+        cpd : CPD
+            A conditional probability distribution
+
+        '''
         self.cpds[cpd.node] = cpd
 
         # add node and edges from parents (if not already present)
@@ -155,6 +283,27 @@ class BayesianNetwork(nx.DiGraph):
         self.add_edges_from([(p, cpd.node) for p in cpd.parents])
 
     def apply_op(self, op):
+        '''
+        Modify the network according to the given operation.
+        
+        An operation is an edge together with an action (add edge, remove edge,
+        flip edge).
+        
+        Parameters
+        ----------
+        op
+            A tuple ``(action, (u, v))`` where action is one of +, - or F and (u,
+            v) is an edge.
+
+        Raises
+        ------
+        NotImplementedError
+            If the given action is not supported.
+        
+        ValueError
+            If the edge is not in the network and operation requires editing it.
+            (This is actually raised by `networkx.DiGraph.remove_edge`.)
+        '''
         action, edge = op
         if action == '+':
             self.add_edge(*edge)
@@ -166,10 +315,12 @@ class BayesianNetwork(nx.DiGraph):
         else:
             raise NotImplemented(f'Operation type {action} is not implemented')
 
-    def update_cpds_from_structure(self):
+    def update_cpds_from_structure(self) -> None:
         '''
         Updates the `parents` attribute in each CPD to match the current graph
         structure.
+
+        .. tip:: Use this method after updating the network structure (e.g. via learning).
         '''
         for node in self.nodes:
             parents = tuple(self.predecessors(node))
@@ -177,7 +328,9 @@ class BayesianNetwork(nx.DiGraph):
 
     def to_dict(self):
         '''
-        Serializes the Bayesian network into a dictionary.
+        Serializes the Bayesian network into a list of dictionaries.
+
+        Each dictionary is the result of serializing a CPD via `CPD.to_dict`.
         '''
         return [self.cpds[n].to_dict() for n in nx.topological_sort(self)]
 
@@ -185,10 +338,23 @@ class BayesianNetwork(nx.DiGraph):
     def from_dict(cls, data):
         '''
         Load Bayesian network from a dict.
+
+        Parameters
+        ----------
+        data : Sequence[Dict[str, Any]]
+            A list of dictionaries corresponding to CPDs. See `CPD.to_dict` for
+            more information on the format.
+
+        See Also
+        --------
+        to_dict, CPD.from_dict
         
-        Note: this method expects the data to be sorted by node in topological
-        order, so that a node always comes before its children. This is the way
-        BayesianNetwork.to_dict() generates dictionaries.
+        Notes
+        -----
+        This method expects the data to be sorted by node in topological order,
+        so that a node always comes before its children. This is the way
+        `to_dict` generates dictionaries.
+
         '''
         net = cls()
         for cpd_data in data:
@@ -208,19 +374,35 @@ class LinearGaussianBayesianNetwork(BayesianNetwork):
     and the standard deviations of the nodes are independent.
 
     The joint distribution of these networks also a Gaussian distribution, the
-    parameters of which can be obtained via the `to_joint_gaussian()` method.
+    parameters of which can be obtained via the `to_joint_gaussian` method.
     '''
     cpd_class = LinearGaussianCPD
 
     def to_joint_gaussian(self):
         '''
-        Find the equivalent multivariate Gaussian distribution to this Bayesian
-        network, useful for sampling.
+        Get the equivalent multivariate Gaussian distribution to this Bayesian
+        network.
 
         Returns a `scipy.stats.multivariate_normal` frozen random variable which
         has attributes `mean` (vector of means) and `cov` (covariance matrix).
         
-        See Bishop PRML pp. 370-371. K&F p. 252.
+        Returns
+        -------
+        scipy.stats.multivariate_normal
+            A frozen random variable.
+
+        Notes
+        -----
+
+        Linear Gaussian Bayesian networks have a joint probability distribution
+        that is also normal, and thus this method is well defined. See p. 252 of
+        [1]_ and pp. 370-371 of [2]_.
+
+        References
+        ----------
+
+        .. [2] C. M. Bishop, Pattern recognition and machine learning. New York:
+                  Springer, 2006.
         '''
 
         variables = list(nx.topological_sort(self))
