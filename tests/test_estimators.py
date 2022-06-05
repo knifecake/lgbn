@@ -23,6 +23,9 @@ class TestSearchEstimator(unittest.TestCase):
         with self.assertRaises(ValueError):
             sse.set_params(eps=-2)
 
+        with self.assertRaises(NotImplementedError):
+            sse.search()
+
     def test_score_strings(self):
         sse = ScoreSearchEstimator('loglik')
         self.assertEqual(sse.score_class, LogLikScore)
@@ -50,6 +53,18 @@ class TestK2Search(unittest.TestCase):
         self.assertListEqual(list(estimator.model.predecessors('B')), ['A'])
         self.assertListEqual(list(estimator.model.predecessors('C')), ['B'])
 
+    
+    def test_params(self):
+        estimator = K2Search(score='bic', ordering='BAC')
+        params = estimator.get_params()
+        params['ordering'] = 'ABC'
+        estimator.set_params(**params)
+        self.assertEqual(estimator.ordering, 'ABC')
+    
+    def test_ordering_required(self):
+        with self.assertRaises(ValueError):
+            K2Search(score='bic')
+
 class TestGreedyHillClimbing(unittest.TestCase):
     def test_fit(self):
         data = pd.read_csv(os.path.join('tests', 'test_data', 'chain.csv'))
@@ -59,6 +74,20 @@ class TestGreedyHillClimbing(unittest.TestCase):
         # self.assertListEqual(list(estimator.model.predecessors('A')), ['B'])
         # self.assertListEqual(list(estimator.model.predecessors('B')), [])
         # self.assertListEqual(list(estimator.model.predecessors('C')), ['B'])
+
+    
+    def test_get_op_delta(self):
+        # tests an edge case to ensure full coverage
+        estimator = GreedyHillClimbing(score='bic')
+        with self.assertRaises(NotImplementedError):
+            estimator._get_op_delta(('X', ('A', 'B')), None)
+
+    def test_params(self):
+        estimator = GreedyHillClimbing(score='bic')
+        params = estimator.get_params()
+        params['max_iter'] = 10
+        estimator.set_params(**params)
+        self.assertEqual(estimator.max_iter, 10)
 
 
 class TestGreedyEquivalentSearch(unittest.TestCase):
@@ -70,3 +99,22 @@ class TestGreedyEquivalentSearch(unittest.TestCase):
         # self.assertListEqual(list(estimator.model.predecessors('A')), ['B'])
         # self.assertListEqual(list(estimator.model.predecessors('B')), [])
         # self.assertListEqual(list(estimator.model.predecessors('C')), ['B'])
+
+    def test_fit_bnlearn(self):
+        data = pd.read_csv(os.path.join('tests', 'test_data', 'bnlearn-gaussian.csv'))
+        estimator = GreedyEquivalentSearch(score='bic')
+        estimator.fit(data)
+
+    def test_get_op_delta(self):
+        # tests an edge case to ensure full coverage
+        estimator = GreedyEquivalentSearch(score='bic')
+        with self.assertRaises(NotImplementedError):
+            estimator._get_op_delta(('X', ('A', 'B')), None)
+
+    
+    def test_params(self):
+        estimator = GreedyEquivalentSearch(score='bic')
+        params = estimator.get_params()
+        params['max_iter'] = 10
+        estimator.set_params(**params)
+        self.assertEqual(estimator.max_iter, 10)

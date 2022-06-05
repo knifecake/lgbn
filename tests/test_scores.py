@@ -4,9 +4,14 @@ import unittest
 import numpy as np
 import pandas as pd
 from lgbn.models import LinearGaussianBayesianNetwork, LinearGaussianCPD
-from lgbn.scores import BICScore, LogLikScore
+from lgbn.scores import BICScore, BaseScore, LogLikScore
 from scipy.stats import norm
 
+class TestBaseScore(unittest.TestCase):
+    def test_score_fam_not_implemented(self):
+        with self.assertRaises(NotImplementedError):
+            score = BaseScore(None)
+            score.score_fam('A', ('B', 'C'))
 
 class TestLogLikScore(unittest.TestCase):
     def test_score_bnlearn(self):

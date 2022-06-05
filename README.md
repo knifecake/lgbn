@@ -24,6 +24,11 @@ This repository includes unit tests for the Python package written using the `un
 
     python3 -m unittest
 
+Test coverage can be measured with coverage.py:
+
+    coverage run -m unittest discover
+    coverage report -m
+
 ### Building the package
 
 Ensure you have installed all dev dependencies. Then run

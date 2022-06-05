@@ -1,9 +1,8 @@
-import random
 from functools import cached_property
 from itertools import permutations
-from time import time
 
 import networkx as nx
+import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator
 
@@ -201,7 +200,7 @@ class K2Search(ScoreSearchEstimator):
             raise ValueError('Ordering must be defined for the K2Search estimator')
 
     def search(self):
-        # initialize empty DAG
+        # initialize disconnected DAG
         dag = LinearGaussianBayesianNetwork()
         for node in self.ordering:
             dag.add_cpd(LinearGaussianCPD(node))
@@ -274,7 +273,7 @@ class GreedyHillClimbing(ScoreSearchEstimator):
            10.1007/s10994-006-6889-7. 
 
     '''
-    def __init__(self, score=None, start_net=None, max_iter=1_000_000, eps=1e-9):
+    def __init__(self, score=None, start_net=None, max_iter=1_000_000, eps=1e-9, random_state=None):
         '''
         Create a GreedyHillClimbing estimator.
         
@@ -288,28 +287,41 @@ class GreedyHillClimbing(ScoreSearchEstimator):
             LogLikScore and BICScore, respectively.
         
         start_net : Optional[BayesianNetwork]
-            A starting Bayesian network, defaults to a fully disconnected network.
+            A starting Bayesian network, defaults to a fully disconnected
+            network.
 
         max_iter : int
             Maximum number of iterations to perform, defaults to 1 million.
 
         eps : float
-
             Tolerance for number equality, i.e. a and b are considered equal if
             ``abs(a - b) < eps``. This is used to stop iteration in iterative
             search algorithms.
         
+        random_state : None, int or numpy.random.Generator
+            Controls the source of randomness for the algorithm. If None or an
+            int is passed, then a new source of randomness is obtained from
+            ``numpy.random.default_rng(random_state)``. Otherwise you can pass a
+            Generator that you have created yourself.
         '''
         super().__init__(score=score, eps=eps)
 
         self.start_net = start_net
         self.max_iter = max_iter
+        self._set_random_state(random_state)
+        
+
+    def _set_random_state(self, random_state):
+        if isinstance(random_state, np.random.Generator):
+            self.random_state = random_state
+        else:
+            self.random_state = np.random.default_rng(random_state)
 
     def get_params(self, deep=True):
         params = super().get_params(deep)
         params['start_net'] = self.start_net
         params['max_iter'] = self.max_iter
-
+        params['random_state'] = self.random_state
         return params
 
     def set_params(self, **kwargs):
@@ -317,12 +329,12 @@ class GreedyHillClimbing(ScoreSearchEstimator):
             self.start_net = kwargs['start_net']
         if 'max_iter' in kwargs:
             self.max_iter = kwargs['max_iter']
+        if 'random_state' in kwargs:
+            self._set_random_state(kwargs['random_state'])
 
         return super().set_params(**kwargs)
 
     def search(self):
-        random.seed(time()) # TODO: handle randomness
-
         dag = self.start_net
         if dag is None:
             # create an empty dag
@@ -331,9 +343,9 @@ class GreedyHillClimbing(ScoreSearchEstimator):
                 dag.add_cpd(LinearGaussianCPD(v))
 
         current_score = self.score.score(dag)
-        for iter in range(self.max_iter):
+        for _ in range(self.max_iter):
             legal_ops = self._get_legal_operations(dag)
-            random.shuffle(legal_ops)
+            self.random_state.shuffle(legal_ops)
             op_deltas = [self._get_op_delta(op, dag) for op in legal_ops]
 
             op_delta_pairs = list(zip(legal_ops, op_deltas))
@@ -407,7 +419,7 @@ class GreedyHillClimbing(ScoreSearchEstimator):
                            self.score.score_fam(X, tuple(old_X_parents)) -
                            self.score.score_fam(Y, tuple(old_Y_parents)))
         else:
-            raise NotImplemented
+            raise NotImplementedError
 
         return score_delta
 
@@ -458,18 +470,15 @@ class GreedyEquivalentSearch(ScoreSearchEstimator):
             Maximum number of iterations to perform, defaults to 1 million.
 
         eps : float
-
             Tolerance for number equality, i.e. a and b are considered equal if
             ``abs(a - b) < eps``. This is used to stop iteration in iterative
             search algorithms.
-        
+
         '''
         super().__init__(score=score, eps=eps)
         self.max_iter = max_iter
-
+        
     def search(self):
-        random.seed(time()) # TODO: handle randomness
-
         # create an empty dag
         dag = LinearGaussianBayesianNetwork()
         for v in self.score.data.columns:
@@ -490,7 +499,7 @@ class GreedyEquivalentSearch(ScoreSearchEstimator):
                 current_score += best_delta
                 dag.apply_op(best_op)
             else:
-                break
+                break # pragma: no cover
 
         while True:
             legal_ops = self._get_legal_remove_operations(dag)
@@ -505,7 +514,7 @@ class GreedyEquivalentSearch(ScoreSearchEstimator):
                 current_score += best_delta
                 dag.apply_op(best_op)
             else:
-                break
+                break # pragma: no cover
 
         return dag
 
@@ -545,6 +554,17 @@ class GreedyEquivalentSearch(ScoreSearchEstimator):
                            self.score.score_fam(Y, tuple(old_parents)))
 
         else:
-            raise NotImplemented
+            raise NotImplementedError
 
         return score_delta
+
+    def get_params(self, deep=True):
+        params = super().get_params(deep)
+        params['max_iter'] = self.max_iter
+        return params
+
+    def set_params(self, **kwargs):
+        if 'max_iter' in kwargs:
+            self.max_iter = kwargs['max_iter']
+
+        return super().set_params(**kwargs)

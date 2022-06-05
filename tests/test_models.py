@@ -18,6 +18,10 @@ class TestCPD(unittest.TestCase):
         self.assertEqual(cpd.node, 'A')
         self.assertEqual(cpd.parents, ('B', 'C'))
 
+    def test_repr(self):
+        cpd = CPD(node='A', parents='BCD')
+        self.assertIsNotNone(repr(cpd))
+
 class TestLinearGaussianCPD(unittest.TestCase):
     def test_casts_parents_to_tuple(self):
         cpd = LinearGaussianCPD(node='A', parents='BC', weights=[1,2])
@@ -44,8 +48,9 @@ class TestLinearGaussianCPD(unittest.TestCase):
         self.assertEqual(cpd.parents, ('B', 'C'))
         self.assertEqual(cpd.weights, (1, 2))
 
-    def test_mle(self):
-        pass # TODO
+    def test_repr(self):
+        cpd = LinearGaussianCPD(node='A', parents='BCD')
+        self.assertIsNotNone(repr(cpd))
 
 class TestBayesianNetwork(unittest.TestCase):
     def test_add_cpd(self):
@@ -72,6 +77,9 @@ class TestBayesianNetwork(unittest.TestCase):
         net.apply_op(('-', ('B', 'A')))
         self.assertFalse(net.has_edge('B', 'A'))
 
+        with self.assertRaises(NotImplementedError):
+            net.apply_op(('X', ('B', 'C')))
+
     def test_update_cpd_structure(self):
         net = BayesianNetwork()
         net.add_cpd(CPD(node='A'))
@@ -80,6 +88,19 @@ class TestBayesianNetwork(unittest.TestCase):
         net.update_cpds_from_structure()
 
         self.assertEqual(net.cpds['B'].parents, ('A', ))
+
+
+    def test_dict_serialization(self):
+        net = BayesianNetwork()
+        net.add_cpd(CPD(node='A'))
+        net.add_cpd(CPD(node='B', parents=('A', )))
+        data = [net.cpds['A'].to_dict(), net.cpds['B'].to_dict()]
+        self.assertEqual(net.to_dict(), data)
+
+        new_net = BayesianNetwork.from_dict(data)
+        self.assertEqual(new_net.cpds['A'].node, 'A')
+        self.assertEqual(new_net.cpds['B'].node, 'B')
+        self.assertEqual(new_net.cpds['B'].parents, ('A',))
 
 class TestLinearGaussianBayesianNetwork(unittest.TestCase):
     def test_to_joint_gaussian(self):

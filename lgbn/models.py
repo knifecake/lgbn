@@ -315,7 +315,7 @@ class BayesianNetwork(nx.DiGraph):
             self.remove_edge(*edge)
             self.add_edge(*reversed(edge))
         else:
-            raise NotImplemented(f'Operation type {action} is not implemented')
+            raise NotImplementedError(f'Operation type {action} is not implemented')
 
     def update_cpds_from_structure(self) -> None:
         '''
