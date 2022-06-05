@@ -1,6 +1,18 @@
 # lgbn
 
-Structure learning for linear Gaussian Bayesian networks.
+[![Documentation Status](https://readthedocs.org/projects/lgbn/badge/?version=latest)](https://lgbn.readthedocs.io/en/latest/?badge=latest)
+
+Structure and parameter learning for linear Gaussian Bayesian networks.
+
+This package provides structure learning of linear Gaussian Bayesian networks via score-based search algorithms. Available algorithms include K2, Greedy Hill Climbing and Greedy Equivalent Search. Available scores include the Log Likelihood score and the Bayesian Information Criterion score.
+
+This is a well-tested (with 100% coverage) and well-documented (full API documentation + design and usage guides) package that focuses on training for a particular kind of Bayesian network: those in which every node has a Gaussian distribution where the mean is a linear combination of the parent nodes plus a bias factor and where the variances are independent across all nodes. This particular kind of Bayesian network has applications in all sorts of problems involving continuous data, even if the distribution of the data itself is not Gaussian.
+
+To our knowledge, this is the only available Python package able to work with these kinds of structures and data. Other Bayesian network packages such as [pgmpy](https://github.com/pgmpy/pgmpy) have not yet implemented continuous Gaussian nodes with the restrictions mentioned before. There exists software in other programming languages such as the [Bayesian Network Toolbox](https://github.com/bayesnet/bnt) (BNT) for MatLab, last released in 2003 or the R package [bnlearn](https://www.bnlearn.com/) which is actively maintained. We have used both as reference implementations and verified that the results obtained with this package match those returned by BNT and bnlearn with a relative error less than one part per million.
+
+## Documentation
+
+Documentation for this package is available online at https://lgbn.readthedocs.io/en/latest/
 
 ## Development
 
@@ -33,7 +45,7 @@ Test coverage can be measured with coverage.py:
 
 Ensure you have installed all dev dependencies. Then run
 
-    python3 setup.py sdist
+    python3 -m build
 
 from the repository root. This will build the package and place it under `dist/lgbn-x.y.z.tar.gz`. You can install it on your own machine by running
 
@@ -53,6 +65,13 @@ Documentation can be compiled in to a set of HTML documents plus many other form
     cd docs
     make html
 
+### Uploading the package to PyPI
+
+Build the package and execute
+
+    python3 -m twine upload dist/*
+
+After that you will be asked for credentials and the updated package will be available for installation with `pip install lgbn`.
 
 ## Acknowledgements
 

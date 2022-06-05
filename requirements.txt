@@ -8,4 +8,4 @@ networkx>=2.8
 pandas>=1.4
 
 # Estimators
-scikit-learn >= 1.1
+scikit-learn>= 1.1

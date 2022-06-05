@@ -1,3 +1,5 @@
 yapf==0.31.0
 Sphinx==5.0.1
 coverage==6.4.1
+build==0.8.0
+twine==4.0.1
